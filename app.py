@@ -1,31 +1,20 @@
 from flask import Flask, request, jsonify
-import boto3
+from localstack_setup import create_sns_client, create_sqs_client, create_topic, create_queue, subscribe_queue_to_topic
+import config
 
 app = Flask(__name__)
 
-localstack_endpoint = "http://localhost:4566"
-sns_client = boto3.client('sns', endpoint_url=localstack_endpoint)
-sqs_client = boto3.client('sqs', endpoint_url=localstack_endpoint)
+sns_client = create_sns_client(config.LOCALSTACK_ENDPOINT)
+sqs_client = create_sqs_client(config.LOCALSTACK_ENDPOINT)
 
-# Create SNS topic and SQS queues
-response = sns_client.create_topic(Name='AppointmentEvents')
-topic_arn = response['TopicArn']
+topic_arn = create_topic(sns_client, config.SNS_TOPIC_NAME)
+email_queue_url = create_queue(sqs_client, config.EMAIL_QUEUE_NAME)
+sms_queue_url = create_queue(sqs_client, config.SMS_QUEUE_NAME)
+entity_queue_url = create_queue(sqs_client, config.ENTITY_QUEUE_NAME)
 
-def create_queue(queue_name):
-    response = sqs_client.create_queue(QueueName=queue_name)
-    return response['QueueUrl']
-
-email_queue_url = create_queue('EmailQueue')
-sms_queue_url = create_queue('SMSQueue')
-entity_queue_url = create_queue('EntityQueue')
-
-def subscribe_queue(queue_url):
-    queue_arn = sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=['QueueArn'])['Attributes']['QueueArn']
-    sns_client.subscribe(TopicArn=topic_arn, Protocol='sqs', Endpoint=queue_arn)
-
-subscribe_queue(email_queue_url)
-subscribe_queue(sms_queue_url)
-subscribe_queue(entity_queue_url)
+subscribe_queue_to_topic(sns_client, sqs_client, topic_arn, email_queue_url)
+subscribe_queue_to_topic(sns_client, sqs_client, topic_arn, sms_queue_url)
+subscribe_queue_to_topic(sns_client, sqs_client, topic_arn, entity_queue_url)
 
 @app.route('/publish', methods=['POST'])
 def publish_message():

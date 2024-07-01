@@ -1,0 +1,5 @@
+LOCALSTACK_ENDPOINT = "http://localhost:4566"
+SNS_TOPIC_NAME = "AppointmentEvents"
+EMAIL_QUEUE_NAME = "EmailQueue"
+SMS_QUEUE_NAME = "SMSQueue"
+ENTITY_QUEUE_NAME = "EntityQueue"
